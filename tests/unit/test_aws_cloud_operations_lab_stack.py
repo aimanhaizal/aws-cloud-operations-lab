@@ -42,12 +42,32 @@ def test_public_subnets_have_internet_routes():
     template.resource_count_is("AWS::EC2::Route", 2)
 
 
-def test_no_ec2_instances_are_created_yet():
+
+def test_one_ec2_instance_is_defined():
     app = core.App()
     stack = AwsCloudOperationsLabStack(app, "CloudOpsTestStack")
     template = assertions.Template.from_stack(stack)
 
-    template.resource_count_is("AWS::EC2::Instance", 0)
+    template.resource_count_is("AWS::EC2::Instance", 1)
+
+    template.has_resource_properties(
+        "AWS::EC2::Instance",
+        {
+            "InstanceType": "t3.micro",
+        },
+    )
+
+    template.has_resource_properties(
+        "AWS::EC2::LaunchTemplate",
+        {
+            "LaunchTemplateData": {
+                "MetadataOptions": {
+                    "HttpTokens": "required",
+                },
+            },
+        },
+    )
+
 
 
 def test_alb_security_group_allows_http():

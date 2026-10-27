@@ -1,6 +1,8 @@
 
 services:
   dashboard:
+    environment:
+      CLOUDOPS_HEALTH_URL: http://127.0.0.1:8000/health
     build:
       context: .
       dockerfile: Dockerfile
