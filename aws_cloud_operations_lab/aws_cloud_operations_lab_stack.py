@@ -37,3 +37,31 @@ class AwsCloudOperationsLabStack(Stack):
                 ),
             ],
         )
+
+        self.alb_security_group = ec2.SecurityGroup(
+            self,
+            "AlbSecurityGroup",
+            vpc=self.vpc,
+            description="Allows public HTTP traffic to the future ALB",
+            allow_all_outbound=True,
+        )
+
+        self.alb_security_group.add_ingress_rule(
+            ec2.Peer.any_ipv4(),
+            ec2.Port.tcp(80),
+            "Allow HTTP from the internet",
+        )
+
+        self.app_security_group = ec2.SecurityGroup(
+            self,
+            "AppSecurityGroup",
+            vpc=self.vpc,
+            description="Allows application traffic only from the ALB",
+            allow_all_outbound=True,
+        )
+
+        self.app_security_group.add_ingress_rule(
+            self.alb_security_group,
+            ec2.Port.tcp(8000),
+            "Allow application traffic from the ALB",
+        )
