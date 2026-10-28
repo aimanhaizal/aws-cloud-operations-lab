@@ -167,9 +167,6 @@ Keep screenshots, command output, and runbook records aligned with the actual de
 
 ## 9. Planned next steps
 
-1. Review and commit the current architecture and operational documentation.
-2. Decide whether CloudWatch alarm notifications are useful; review setup and costs before adding them.
-3. Consider managing the CloudWatch Agent configuration through repeatable project configuration rather than relying solely on one-off SSM commands.
-4. Document a repeatable dashboard image build and deployment/update process.
-5. Improve operational tests and capture sanitized portfolio evidence.
-6. Continue expanding the application architecture only after reviewing the infrastructure diff, security impact, and cost.
+1. Optional alarm notifications
+2. Repeatable container deployment
+3. Managing the CloudWatch Agent configuration through project files
