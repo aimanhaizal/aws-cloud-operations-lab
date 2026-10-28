@@ -102,7 +102,3 @@ This project focuses on a cost-conscious EC2 operations lab.
 The lab avoids adding infrastructure without first reviewing its operational value and cost. AWS charges may still apply to compute, storage, public IPv4 addresses, logging, and other resources.
 
 Review CDK synthesis and infrastructure diffs before deployment. Preserve unrelated AWS stacks and resources.
-
-## Repository
-
-[View the project on GitHub](https://github.com/aimanhaizal/aws-cloud-operations-lab)
