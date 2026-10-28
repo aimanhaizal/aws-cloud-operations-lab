@@ -98,8 +98,7 @@ These are potential future extensions, not capabilities claimed by the current d
 
 - [Architecture](docs/architecture.md)
 - [Operations runbook](docs/runbook.md)
-- [Supplementary runbook](docs/v2_runbook.md)
-
+  
 ## Cost and security
 
 The lab avoids adding infrastructure without first reviewing its operational value and cost. AWS charges may still apply to compute, storage, public IPv4 addresses, logging, and other resources.
