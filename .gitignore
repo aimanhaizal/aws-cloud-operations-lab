@@ -12,3 +12,11 @@ cdk.out
 # Local documentation backups
 /docs/v2_runbook.md
 /old_README.md
+
+# Local secrets and environment files
+.env
+.env.*
+!.env.example
+
+# Local AWS credentials
+.aws/
