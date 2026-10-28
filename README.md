@@ -90,9 +90,7 @@ pytest -q
 
 ## Current scope and limitations
 
-This project focuses on a cost-conscious EC2 operations lab. It does not currently demonstrate a deployed Application Load Balancer, Auto Scaling group, ECS/EKS workload, managed database, automated backup-and-restore process, Windows Server administration, Security Hub/Inspector remediation, or a CI/CD pipeline.
-
-These are potential future extensions, not capabilities claimed by the current deployment.
+This project focuses on a cost-conscious EC2 operations lab.
 
 ## Documentation
 
