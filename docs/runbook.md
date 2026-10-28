@@ -43,7 +43,7 @@ Run administrative commands from a workstation with the AWS CLI installed and th
 ```bash
 export AWS_PROFILE=portfolio-dev
 export AWS_REGION=ap-southeast-1
-export INSTANCE_ID=i-0cd747d495eabf8c0
+export INSTANCE_ID=<your-ec2-instance-id>
 ```
 
 Verify the active AWS identity and configured region before proceeding.
