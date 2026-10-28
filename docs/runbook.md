@@ -311,13 +311,13 @@ The application provides test-only endpoints to simulate a Payment API health fa
 3. Confirm that the failure was ingested into CloudWatch Logs:
 
    ```bash
-   aws logs filter-log-events \
-     --log-group-name /aws/ec2/aws-cloud-operations-lab/docker \
-     --filter-pattern '"GET /demo/payment-health" "503"'
-     --profile portfolio-dev \
-     --region ap-southeast-1 \
-     --query 'events[].message' \
-     --output text
+    aws logs filter-log-events \
+      --log-group-name /aws/ec2/aws-cloud-operations-lab/docker \
+      --filter-pattern '"GET /demo/payment-health" "503"' \
+      --profile portfolio-dev \
+      --region ap-southeast-1 \
+      --query 'events[].message' \
+      --output text
    ```
 
 4. Check the custom metric and alarm state. Allow a short period for log delivery, metric publication and alarm evaluation:
@@ -353,6 +353,11 @@ The application provides test-only endpoints to simulate a Payment API health fa
    ```
 
 6. Verify recovery by requesting `http://127.0.0.1:8001/demo/payment-health` through Systems Manager and confirming HTTP 200 with `{"status":"healthy","simulated":true}`. The alarm may remain in `ALARM` until its evaluation period no longer contains a breaching datapoint; check it again after the evaluation cycle.
+### Update
+- The current container is `cloudops-dashboard`.
+- The old container is retained as a backup; don't remove it as part of routine troubleshooting.
+- The CloudWatch Agent must collect logs from the current container's log file, not a stale container ID.
+- After replacing the container, verify both the application health endpoint and fresh log delivery to CloudWatch.
 
 #### Recorded validation result — 28 October 2026
 
