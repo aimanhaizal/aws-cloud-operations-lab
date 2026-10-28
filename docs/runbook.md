@@ -370,11 +370,42 @@ If Docker health checks are configured, also confirm that the container returns 
 
 Record the incident, root cause, corrective action and verification results.
 
-## 6. Infrastructure Changes
+## 6. Patch Compliance Assessment
+
+AWS Systems Manager Patch Manager was used to run a scan against the Amazon Linux EC2 application instance.
+
+**Assessment record**
+
+- Operation: `Scan`
+- Assessment completed: 28 October 2026, 09:41 MYT
+- Installed patches reported: 68
+- Missing patches: 0
+- Failed patches: 0
+- Security non-compliant patches: 0
+- Critical non-compliant patches: 0
+- Patch baseline: `pb-017dc15c6301bae06`
+
+The scan completed successfully and reported no missing patches under the baseline applied to the instance. The scan assessed compliance only; it did not install updates or initiate a reboot.
+
+The `AvailableSecurityUpdateCount` field was unavailable in this assessment, so the results should not be interpreted as independent confirmation that every available security update has been installed.
+
+**Operational procedure**
+
+1. Run a Patch Manager scan before scheduling maintenance.
+2. Review the compliance counts and any command errors.
+3. Investigate non-compliant or failed patches before proceeding.
+4. Obtain approval before installing updates, particularly when a reboot may be required.
+5. Run another scan after maintenance to verify the resulting compliance state.
+
+Repeat the assessment periodically and retain the results as operational evidence.
+
+
+
+## 7. Infrastructure Changes
 
 AWS CDK defines the infrastructure and synthesises a CloudFormation template. CloudFormation manages the deployed resources as a stack.
 
-### 6.1 Review changes before deployment
+### 7.1 Review changes before deployment
 
 Run the following commands from the project directory using the intended CDK environment and configuration.
 
@@ -394,7 +425,7 @@ Review the output for:
 
 Where necessary, inspect the synthesized CloudFormation template and deployed stack configuration before proceeding.
 
-### 6.2 Deploy reviewed changes
+### 7.2 Deploy reviewed changes
 
 Deploy only after reviewing the proposed changes and confirming the target AWS profile and region.
 
@@ -410,9 +441,9 @@ Do not delete or replace unrelated stacks, including `ServerlessPortfolioStack` 
 
 Preserve existing DynamoDB resources and the CDK asset bucket unless a separately reviewed change explicitly requires otherwise.
 
-## 7. Security and Cost Considerations
+## 8. Security and Cost Considerations
 
-### 7.1 Security controls
+### 8.1 Security controls
 
 - Prefer Systems Manager for administrative access instead of opening SSH to the internet.
 - Follow least-privilege IAM practices when adding permissions.
@@ -425,7 +456,7 @@ Preserve existing DynamoDB resources and the CDK asset bucket unless a separatel
 
 The documented dashboard binding to `127.0.0.1:8001` prevents direct access through the EC2 instance's external network interfaces via that binding. It does not, by itself, establish the security of every other service or network path.
 
-### 7.2 Cost controls
+### 8.2 Cost controls
 
 - Check AWS billing and resource usage regularly.
 - Do not assume that a budget alert is a spending cap.
