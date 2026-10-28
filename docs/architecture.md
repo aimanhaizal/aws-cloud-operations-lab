@@ -155,7 +155,7 @@ Check the deployed alarm settings before treating documented thresholds as autho
 
 ## 8. Testing and evidence
 
-Infrastructure changes are tested locally using `pytest` and AWS CDK assertions. The last confirmed local test run on 28 October 2026 reported **17 passed**.
+Infrastructure changes are tested locally using `pytest` and AWS CDK assertions. The last confirmed local test run on 28 October 2026 reported **18 passed**.
 
 For future work, distinguish between:
 
