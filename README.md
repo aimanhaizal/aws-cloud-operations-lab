@@ -15,6 +15,10 @@ This project runs a containerised Flask dashboard on Amazon EC2 and uses AWS Sys
 - **Container optimisation:** Reduced the dashboard runtime image from 522 MB to 131 MB.
 - **Testing and documentation:** 18 passing local tests, an operations runbook and architecture documentation.
 
+## Dashboard
+
+![Cloud Operations Dashboard](docs/cloud-operations.png)
+
 ## Architecture
 
 ```mermaid
