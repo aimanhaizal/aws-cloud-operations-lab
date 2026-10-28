@@ -1,12 +1,19 @@
 # AWS Cloud Operations Lab
 
-A hands-on AWS operations portfolio project demonstrating infrastructure as code, secure remote administration, containerised application hosting, CloudWatch monitoring and alerting, patch-compliance assessment, and incident recovery.
+A hands-on AWS portfolio project focused on **cloud operations, infrastructure as code, monitoring, Linux administration, and incident troubleshooting**.
 
-## Project overview
+This project runs a containerised Flask dashboard on Amazon EC2 and uses AWS Systems Manager and Amazon CloudWatch to demonstrate secure remote administration, centralised logging, alerting, patch-compliance assessment, and recovery testing.
 
-This project runs a Flask operations dashboard in Docker on Amazon EC2. AWS Systems Manager provides remote administration, while the CloudWatch Agent forwards container logs to CloudWatch Logs. A metric filter detects simulated Payment API HTTP 503 failures and drives a CloudWatch alarm.
+## Key skills demonstrated
 
-The goal is to demonstrate practical cloud operations and troubleshooting without building an unnecessarily expensive infrastructure stack.
+- **AWS compute and Linux:** Amazon EC2, Amazon Linux 2023, Docker and Gunicorn.
+- **Infrastructure as code:** AWS CDK and AWS CloudFormation.
+- **Remote administration:** AWS Systems Manager Run Command and health checks.
+- **Monitoring and alerting:** CloudWatch Agent, CloudWatch Logs, metric filters, custom metrics and alarms.
+- **Incident response:** Simulated HTTP 503 failures, alarm-state verification and application recovery.
+- **Patch compliance:** Systems Manager Patch Manager scan and compliance review.
+- **Container optimisation:** Reduced the dashboard runtime image from 522 MB to 131 MB.
+- **Testing and documentation:** 18 passing local tests, an operations runbook and architecture documentation.
 
 ## Architecture
 
@@ -27,77 +34,74 @@ flowchart TD
     I --> J["CloudWatch alarm"]
 ```
 
-**AWS region:** `ap-southeast-1` (Singapore)
+The dashboard host port is bound to `127.0.0.1:8001`, rather than being directly exposed through that binding to the public internet. Remote administrative operations use Systems Manager.
 
-See [`docs/architecture.md`](docs/architecture.md) for the deployed architecture and design boundaries.
+## Monitoring and incident recovery
 
-## What this project demonstrates
+The project demonstrates an end-to-end monitoring workflow:
 
-- **Infrastructure as code:** AWS CDK and CloudFormation.
-- **Compute and containers:** A Flask dashboard served by Gunicorn inside Docker on an Amazon Linux 2023 EC2 instance.
-- **Remote administration:** AWS Systems Manager for operational commands and health checks.
-- **Centralised logging:** CloudWatch Agent forwarding Docker logs to CloudWatch Logs, with 14-day retention.
-- **Monitoring and alerting:** A CloudWatch Logs metric filter detects simulated HTTP 503 failures and publishes a custom metric used by a CloudWatch alarm.
-- **Incident simulation and recovery:** Trigger a controlled application failure, observe the alarm, restore service, and verify recovery.
-- **Patch compliance:** A Systems Manager Patch Manager scan reported zero missing, failed, security non-compliant, and critical non-compliant patches under the applied baseline on 28 October 2026.
-- **Operational documentation:** Runbook covering health checks, troubleshooting, monitoring, recovery, patch assessment, and cost precautions.
+1. Activate a controlled Payment API failure simulation.
+2. Generate an HTTP 503 response from the demo health endpoint.
+3. Collect the container access log in CloudWatch Logs.
+4. Match the failure using a CloudWatch Logs metric filter.
+5. Publish a custom metric and trigger a CloudWatch alarm.
+6. Restore the simulated service and verify HTTP 200 and alarm recovery.
 
-## Failure-monitoring demonstration
+**Verified result:** The failure simulation produced a metric datapoint of `1.0`, the alarm entered `ALARM`, and the alarm subsequently returned to `OK` after recovery.
 
-The dashboard includes endpoints for a safe, simulated service failure:
+This is a simulated service failure, not a real payment system. The alarm currently has no email or other notification actions configured.
 
-| Method | Endpoint | Purpose |
-|---|---|---|
-| `GET` | `/health` | Check dashboard health |
-| `GET` | `/demo/payment-health` | Check simulated Payment API health |
-| `POST` | `/demo/simulate-failure` | Activate the simulated failure |
-| `POST` | `/demo/restore` | Restore simulated service health |
+## Operations and compliance
 
-The verified test sequence produced an HTTP 503 response, a matching CloudWatch Logs event, a custom metric datapoint of `1.0`, and an `ALARM` state. After restoration, the endpoint returned HTTP 200 and the alarm later returned to `OK`.
-
-This is a demonstration only; it does not connect to or affect a real payment service. The alarm currently has no notification actions configured.
-
-## Container build
-
-The dashboard uses a dedicated runtime dependency file so the deployed image does not need the AWS CDK development dependencies.
-
-The latest runtime image was **131 MB**, down from the previous **522 MB** image. The replacement container passed checks for `/health`, `/demo/payment-health`, and the dashboard page, all returning HTTP 200.
+- EC2 CPU utilisation and status-check alarms are configured.
+- The CloudWatch Agent forwards Docker logs to CloudWatch Logs.
+- The log group has 14-day retention.
+- A Systems Manager Patch Manager scan completed on 28 October 2026 with zero missing, failed, security non-compliant, and critical non-compliant patches under the applied baseline.
+- The patch assessment was scan-only; it did not install updates or reboot the instance.
 
 ## Testing
 
-Run the local test suite:
+The latest confirmed local test run reported **18 passing tests**.
+
+Run the test suite locally:
 
 ```bash
 source .venv/bin/activate
 pytest -q
 ```
 
-Latest confirmed local result: **18 passed**.
+## Technology stack
 
-Check the repository before committing changes:
+| Area | Technologies |
+|---|---|
+| Cloud platform | AWS |
+| Compute and OS | EC2, Amazon Linux 2023 |
+| Containers | Docker |
+| Application | Python, Flask, Gunicorn |
+| Infrastructure as code | AWS CDK, CloudFormation |
+| Operations | Systems Manager, Patch Manager |
+| Observability | CloudWatch Agent, CloudWatch Logs, metrics and alarms |
+| Testing | pytest |
+| Version control | Git, GitHub |
 
-```bash
-git status --short
-git diff --check
-```
+## Current scope and limitations
+
+This project focuses on a cost-conscious EC2 operations lab. It does not currently demonstrate a deployed Application Load Balancer, Auto Scaling group, ECS/EKS workload, managed database, automated backup-and-restore process, Windows Server administration, Security Hub/Inspector remediation, or a CI/CD pipeline.
+
+These are potential future extensions, not capabilities claimed by the current deployment.
 
 ## Documentation
 
-- [`docs/architecture.md`](docs/architecture.md) — deployed monitoring architecture, network design, security and cost considerations.
-- [`docs/runbook.md`](docs/runbook.md) — operational procedures, troubleshooting, monitoring and recovery.
-- [`docs/v2_runbook.md`](docs/v2_runbook.md) — supplementary operational notes.
+- [Architecture](docs/architecture.md)
+- [Operations runbook](docs/runbook.md)
+- [Supplementary runbook](docs/v2_runbook.md)
 
-## Cost and security considerations
+## Cost and security
 
-- The dashboard host port is bound to `127.0.0.1:8001` on the EC2 instance, rather than directly exposed through that binding to the public internet.
-- Systems Manager is used for remote administration instead of opening SSH as a shortcut.
-- The current deployment does not include a NAT Gateway or Application Load Balancer.
-- CloudWatch Logs retention is set to 14 days.
-- The CloudWatch failure alarm changes state but does not send notifications.
-- AWS charges may still apply for EC2, storage, public IPv4, logging, and other resources. Review costs before making changes.
+The lab avoids adding infrastructure without first reviewing its operational value and cost. AWS charges may still apply to compute, storage, public IPv4 addresses, logging, and other resources.
 
-The project is designed to preserve unrelated AWS resources. Review CDK synthesis and infrastructure diffs before deployment; do not deploy or destroy resources without checking the impact.
+Review CDK synthesis and infrastructure diffs before deployment. Preserve unrelated AWS stacks and resources.
 
 ## Repository
 
-[GitHub: aws-cloud-operations-lab](https://github.com/aimanhaizal/aws-cloud-operations-lab)
+[View the project on GitHub](https://github.com/aimanhaizal/aws-cloud-operations-lab)
