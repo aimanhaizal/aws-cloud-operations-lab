@@ -10,29 +10,21 @@ The goal is to demonstrate practical cloud operations and troubleshooting withou
 
 ## Architecture
 
-```text
-Administrator workstation
-        |
-        | AWS CLI / Systems Manager
-        v
-Amazon EC2 — Amazon Linux 2023
-        |
-        +-- Docker: Flask + Gunicorn dashboard
-        |      Host binding: 127.0.0.1:8001
-        |
-        +-- CloudWatch Agent
-                 |
-                 v
-          CloudWatch Logs
-                 |
-                 v
-          HTTP 503 metric filter
-                 |
-                 v
-          Custom CloudWatch metric
-                 |
-                 v
-          CloudWatch alarm
+```mermaid
+flowchart TD
+    A["Administrator workstation"] -->|"AWS CLI / Systems Manager"| B["Amazon EC2<br/>Amazon Linux 2023"]
+
+    subgraph EC2["EC2 instance"]
+        B --> C["Docker dashboard<br/>Flask + Gunicorn"]
+        C --> D["127.0.0.1:8001"]
+        C --> E["Docker JSON logs"]
+        E --> F["CloudWatch Agent"]
+    end
+
+    F --> G["CloudWatch Logs"]
+    G --> H["HTTP 503 metric filter"]
+    H --> I["Custom metric<br/>CloudOps/Demo"]
+    I --> J["CloudWatch alarm"]
 ```
 
 **AWS region:** `ap-southeast-1` (Singapore)
