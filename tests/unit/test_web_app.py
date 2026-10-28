@@ -24,33 +24,38 @@ def test_dashboard_renders_equipment_and_requests():
     assert b"Network Switch B" in response.data
     assert b"Maintenance requests" in response.data
 
-
-def test_dashboard_renders_service_health():
-    from unittest.mock import patch
-
+def test_dashboard_renders_service_health_without_http_probes():
     app = create_app()
+    client = app.test_client()
 
-    mock_health = {
-        "name": "CloudOps Dashboard",
-        "url": "http://127.0.0.1:8000/health",
-        "status": "healthy",
-        "status_code": 200,
-        "response_time_ms": 12.5,
-        "checked_at": "2026-10-27T06:00:00+00:00",
-        "error": None,
-    }
-
-    with patch(
-        "cloudops_lab.check_http_service",
-        return_value=mock_health,
-    ):
-        response = app.test_client().get("/")
+    response = client.get("/")
 
     assert response.status_code == 200
     assert b"Service health" in response.data
     assert b"CloudOps Dashboard" in response.data
-    assert b"HEALTHY" in response.data
-    assert b"12.5 ms" in response.data
+    assert b"Demo Payment API" in response.data
+    assert response.data.count(b"HEALTHY") == 2
+    assert b"12.5 ms" not in response.data
+
+
+def test_dashboard_health_reflects_simulated_payment_failure():
+    app = create_app()
+    client = app.test_client()
+
+    client.post("/demo/simulate-failure")
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert b"CloudOps Dashboard" in response.data
+    assert b"Demo Payment API" in response.data
+    assert b"UNHEALTHY" in response.data
+
+    client.post("/demo/restore")
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert response.data.count(b"HEALTHY") == 2
+
 
 
 def test_dashboard_includes_failure_simulation_controls():

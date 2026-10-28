@@ -1,9 +1,7 @@
 # import os
-from cloudops_lab.config import MONITORED_SERVICES
+from datetime import datetime, timezone
 
 from flask import Flask, jsonify, render_template
-
-from cloudops_lab.monitoring import check_http_service
 
 
 def create_app():
@@ -52,28 +50,28 @@ def create_app():
         },
     ]
 
-    # monitored_services = [
-    #     {
-    #         "name": "CloudOps Dashboard",
-    #         "url": os.environ.get(
-    #             "CLOUDOPS_HEALTH_URL",
-    #             "http://127.0.0.1:8001/health",
-    #         ),
-    #     },
-    # ]
-
-
-
     @app.get("/")
     def index():
-        # service_health = [
-        #     check_http_service(service["name"], service["url"])
-        #     for service in monitored_services
-        # ]
+        checked_at = datetime.now(timezone.utc).isoformat()
+        payment_failed = app.config["DEMO_PAYMENT_FAILED"]
 
         service_health = [
-            check_http_service(service["name"], service["url"])
-            for service in MONITORED_SERVICES
+            {
+                "name": "CloudOps Dashboard",
+                "status": "healthy",
+                "status_code": 200,
+                "response_time_ms": None,
+                "checked_at": checked_at,
+                "error": None,
+            },
+            {
+                "name": "Demo Payment API",
+                "status": "unhealthy" if payment_failed else "healthy",
+                "status_code": 503 if payment_failed else 200,
+                "response_time_ms": None,
+                "checked_at": checked_at,
+                "error": None,
+            },
         ]
 
         return render_template(
