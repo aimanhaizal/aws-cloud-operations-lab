@@ -19,7 +19,7 @@ The application runs on an Amazon EC2 instance using Amazon Linux 2023. Docker h
 | Docker | Runs the dashboard container. |
 | Flask and Gunicorn | Serve the dashboard and its health endpoint. |
 | AWS Systems Manager | Provides remote administration through Run Command. |
-| Amazon CloudWatch | Monitors EC2 CPU utilisation and instance status checks. |
+| Amazon CloudWatch | Monitors EC2 CPU utilisation and instance status checks, collects Docker logs, and evaluates application-failure metrics and alarms. |
 | AWS CDK and CloudFormation | Define and manage the infrastructure. |
 
 ### Application access
@@ -235,9 +235,141 @@ For a CPU alarm, investigate sustained utilisation and potential resource conten
 
 For an EC2 status-check alarm, determine whether the failure originates from the underlying system or the instance itself before attempting application recovery.
 
-### 4.4 Alerting limitations
+### 4.4 Application log monitoring and simulated failure alarm
 
-The documented implementation includes two CloudWatch alarms. Alarm notifications and automatic remediation are not documented as configured capabilities.
+The Docker container log file is collected by the CloudWatch Agent and delivered to the following log group:
+
+- Log group: `/aws/ec2/aws-cloud-operations-lab/docker`
+- Log stream: the EC2 instance ID
+- Retention: 14 days
+- Source: Docker `json-file` log for the `cloudops-dashboard` container
+
+A CloudWatch Logs metric filter named `DemoPaymentApi-HTTP503` matches Docker JSON log events whose `log` field contains a `GET /demo/payment-health` request returning HTTP 503. Each match publishes a value of `1` to the custom metric `DemoPaymentApiFailures` in the `CloudOps/Demo` namespace.
+
+The metric is evaluated by the `CloudOps-Demo-Payment-API-Failure` alarm. Its configured threshold is a metric sum greater than or equal to 1 in a 60-second period, with one evaluation period. Missing data is treated as non-breaching.
+
+Inspect the metric filter:
+
+```bash
+aws logs describe-metric-filters \
+  --log-group-name /aws/ec2/aws-cloud-operations-lab/docker \
+  --profile portfolio-dev \
+  --region ap-southeast-1 \
+  --query 'metricFilters[].{Name:filterName,Pattern:filterPattern,Metric:metricTransformations[0].metricName,Namespace:metricTransformations[0].metricNamespace}' \
+  --output table
+```
+
+Inspect the application alarm:
+
+```bash
+aws cloudwatch describe-alarms \
+  --alarm-names CloudOps-Demo-Payment-API-Failure \
+  --profile portfolio-dev \
+  --region ap-southeast-1 \
+  --query 'MetricAlarms[].{Alarm:AlarmName,State:StateValue,Reason:StateReason,Metric:MetricName,Namespace:Namespace,Threshold:Threshold,Period:Period,EvaluationPeriods:EvaluationPeriods}' \
+  --output table
+```
+
+#### Simulated failure and recovery test
+
+The application provides test-only endpoints to simulate a Payment API health failure. These endpoints change the demo application's in-memory state; they do not affect a real payment service. Run the commands only against the intended lab instance.
+
+1. Activate the simulated failure:
+
+   ```bash
+   COMMAND_ID=$(aws ssm send-command \
+     --instance-ids "$INSTANCE_ID" \
+     --document-name AWS-RunShellScript \
+     --parameters '{"commands":["curl -sS -X POST http://127.0.0.1:8001/demo/simulate-failure"]}' \
+     --query 'Command.CommandId' \
+     --output text)
+
+   aws ssm get-command-invocation \
+     --command-id "$COMMAND_ID" \
+     --instance-id "$INSTANCE_ID" \
+     --query '{Status:Status,Output:StandardOutputContent,Error:StandardErrorContent}' \
+     --output json
+   ```
+
+2. Request the Payment API health endpoint to generate the HTTP 503 access log:
+
+   ```bash
+   COMMAND_ID=$(aws ssm send-command \
+     --instance-ids "$INSTANCE_ID" \
+     --document-name AWS-RunShellScript \
+     --parameters '{"commands":["curl -sS -o /dev/null -w \"Payment health HTTP %{http_code}\\n\" http://127.0.0.1:8001/demo/payment-health"]}' \
+     --query 'Command.CommandId' \
+     --output text)
+
+   aws ssm get-command-invocation \
+     --command-id "$COMMAND_ID" \
+     --instance-id "$INSTANCE_ID" \
+     --query '{Status:Status,Output:StandardOutputContent,Error:StandardErrorContent}' \
+     --output json
+   ```
+
+3. Confirm that the failure was ingested into CloudWatch Logs:
+
+   ```bash
+   aws logs filter-log-events \
+     --log-group-name /aws/ec2/aws-cloud-operations-lab/docker \
+     --filter-pattern '"GET /demo/payment-health" "503"'
+     --profile portfolio-dev \
+     --region ap-southeast-1 \
+     --query 'events[].message' \
+     --output text
+   ```
+
+4. Check the custom metric and alarm state. Allow a short period for log delivery, metric publication and alarm evaluation:
+
+   ```bash
+   aws cloudwatch get-metric-statistics \
+     --namespace CloudOps/Demo \
+     --metric-name DemoPaymentApiFailures \
+     --start-time "$(date -u -d '15 minutes ago' +%Y-%m-%dT%H:%M:%SZ)" \
+     --end-time "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+     --period 60 \
+     --statistics Sum \
+     --profile portfolio-dev \
+     --region ap-southeast-1 \
+     --output table
+   ```
+
+5. Restore the demo service regardless of the alarm's current state:
+
+   ```bash
+   COMMAND_ID=$(aws ssm send-command \
+     --instance-ids "$INSTANCE_ID" \
+     --document-name AWS-RunShellScript \
+     --parameters '{"commands":["curl -sS -X POST http://127.0.0.1:8001/demo/restore"]}' \
+     --query 'Command.CommandId' \
+     --output text)
+
+   aws ssm get-command-invocation \
+     --command-id "$COMMAND_ID" \
+     --instance-id "$INSTANCE_ID" \
+     --query '{Status:Status,Output:StandardOutputContent,Error:StandardErrorContent}' \
+     --output json
+   ```
+
+6. Verify recovery by requesting `http://127.0.0.1:8001/demo/payment-health` through Systems Manager and confirming HTTP 200 with `{"status":"healthy","simulated":true}`. The alarm may remain in `ALARM` until its evaluation period no longer contains a breaching datapoint; check it again after the evaluation cycle.
+
+#### Recorded validation result — 28 October 2026
+
+The test was performed against the deployed lab instance and produced the following observed results:
+
+- CloudWatch Logs contained a `GET /demo/payment-health` access-log entry with HTTP status `503` at approximately 10:14 MYT.
+- `DemoPaymentApiFailures` published a datapoint with `Sum = 1` for the 10:14 MYT minute.
+- `CloudOps-Demo-Payment-API-Failure` entered `ALARM` after the threshold was crossed.
+- The restore endpoint returned `{"simulated":true,"status":"healthy"}`.
+- A subsequent Payment API health check returned HTTP 200 and `{"simulated":true,"status":"healthy"}`.
+- The alarm later returned to `OK` at 10:21 MYT after no breaching datapoint remained in its evaluation period.
+
+This validates the log-ingestion, metric-filter, alarm and recovery workflow. It does not demonstrate notification delivery or automatic remediation.
+
+### 4.5 Alerting limitations
+
+The lab includes EC2 alarms and a custom application-failure alarm. Alarm notifications and automatic remediation are not configured as part of this workflow.
 
 Do not assume that an alarm automatically sends an email, pages an administrator or repairs the affected resource.
 
